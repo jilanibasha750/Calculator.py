@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Indian Big Calculator</title>
+<style>
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{margin:0;min-height:100vh;background:#050713;font-family:Arial,sans-serif;color:white;display:flex;justify-content:center;align-items:center}
+.calculator{width:min(95vw,650px);background:#111c3a;border-radius:32px;padding:10px 25px 25px;border-top:5px solid #ff9933;box-shadow:0 15px 50px rgba(0,0,0,.5)}
+.flag{height:5px;margin:0 -25px 25px;background:linear-gradient(to bottom,#ff9933 0 33%,white 33% 66%,#138808 66% 100%)}
+h1{margin:0;font-size:28px}.subtitle{color:#9da9c7;margin:5px 0 20px}
+.display{background:#03050e;min-height:190px;border-radius:28px;border-bottom:5px solid #ff9933;padding:20px;margin-bottom:20px;overflow:auto}
+.expression{color:#8995b4;font-size:17px;text-align:right;word-break:break-all;min-height:25px}
+.result{font-size:36px;font-weight:bold;text-align:right;word-break:break-all;margin-top:15px}
+.words{color:#ffbd66;font-size:17px;text-align:right;line-height:1.5;margin-top:12px;word-break:break-word}
+.buttons{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
+button{height:70px;border:0;border-radius:23px;background:#1d2b50;color:white;font-size:24px;font-weight:bold;cursor:pointer}
+button:active{transform:scale(.94)}.function{background:#2b3d70}.operator,.equals{background:#ff9933;color:#111}
+.equals{grid-column:span 2}.zero{grid-column:span 2}
+@media(max-width:450px){.calculator{width:97vw;padding:10px 15px 15px}.flag{margin-left:-15px;margin-right:-15px}button{height:62px;font-size:21px}.result{font-size:29px}}
+</style>
+</head>
+<body>
+<div class="calculator">
+<div class="flag"></div>
+<h1>Indian Big Calculator</h1>
+<div class="subtitle">Exact calculations • Huge numbers • English text</div>
+<div class="display">
+<div class="expression" id="expression"></div>
+<div class="result" id="result">0</div>
+<div class="words" id="words">Zero</div>
+</div>
+<div class="buttons">
+<button class="function" onclick="clearAll()">AC</button>
+<button class="function" onclick="backspace()">⌫</button>
+<button class="function" onclick="add('%')">%</button>
+<button class="operator" onclick="add('/')">÷</button>
+<button onclick="add('7')">7</button><button onclick="add('8')">8</button><button onclick="add('9')">9</button><button class="operator" onclick="add('*')">×</button>
+<button onclick="add('4')">4</button><button onclick="add('5')">5</button><button onclick="add('6')">6</button><button class="operator" onclick="add('-')">−</button>
+<button onclick="add('1')">1</button><button onclick="add('2')">2</button><button onclick="add('3')">3</button><button class="operator" onclick="add('+')">+</button>
+<button class="zero" onclick="add('0')">0</button><button onclick="add('.')">.</button><button class="equals" onclick="calculate()">=</button>
+</div>
+</div>
+<script src="script.js"></script>
+</body>
+</html>
