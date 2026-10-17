@@ -1,0 +1,645 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Calculator</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#162023">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<style>
+:root {
+  --page: #e4eaed;
+  --body: #f5f7f8;
+  --screen: #1c2a2e;
+  --screen-text: #f2f6f6;
+  --screen-dim: #8fa5a9;
+  --key: #ffffff;
+  --key-text: #1c2a2e;
+  --key-press: #dde5e8;
+  --op: #d6e6e6;
+  --op-text: #1f5359;
+  --accent: #e0a437;
+  --accent-text: #25190a;
+  --danger-text: #b3382c;
+  --shadow: 0 1px 0 rgba(28,42,46,.12), 0 24px 48px -24px rgba(28,42,46,.35);
+  --key-shadow: 0 2px 0 rgba(28,42,46,.14);
+  --hist-line: rgba(28,42,46,.12);
+  --hist-text: #51666a;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --page: #0d1214;
+    --body: #162023;
+    --screen: #0a1012;
+    --screen-text: #eef4f4;
+    --screen-dim: #6f878b;
+    --key: #213036;
+    --key-text: #eef4f4;
+    --key-press: #2c4047;
+    --op: #1f4a50;
+    --op-text: #bfe3e3;
+    --accent: #e0a437;
+    --accent-text: #25190a;
+    --danger-text: #ff8d7f;
+    --shadow: 0 24px 48px -24px rgba(0,0,0,.7);
+    --key-shadow: 0 2px 0 rgba(0,0,0,.35);
+    --hist-line: rgba(238,244,244,.1);
+    --hist-text: #8fa5a9;
+  }
+}
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+html, body { height: 100%; }
+body {
+  margin: 0;
+  background: var(--page);
+  color: var(--key-text);
+  font-family: ui-rounded, "SF Pro Rounded", "Segoe UI", system-ui, sans-serif;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+}
+.calc {
+  width: 100%;
+  max-width: 360px;
+  background: var(--body);
+  border-radius: 28px;
+  padding: 16px;
+  box-shadow: var(--shadow);
+}
+.screen {
+  background: var(--screen);
+  color: var(--screen-text);
+  border-radius: 18px;
+  padding: 14px 18px 16px;
+  min-height: 118px;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  align-items: flex-end;
+  gap: 4px;
+  overflow: hidden;
+  cursor: pointer;
+}
+.expr {
+  color: var(--screen-dim);
+  font-size: 18px;
+  min-height: 24px;
+  max-width: 100%;
+  white-space: nowrap;
+  overflow-x: auto;
+  scrollbar-width: none;
+  direction: ltr;
+  text-align: right;
+}
+.expr::-webkit-scrollbar { display: none; }
+.result {
+  font-size: 44px;
+  font-weight: 600;
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+  max-width: 100%;
+  white-space: nowrap;
+  overflow-x: auto;
+  scrollbar-width: none;
+  transition: opacity .15s;
+}
+.words {
+  color: var(--screen-dim);
+  font-size: 14px;
+  line-height: 1.3;
+  text-align: right;
+  max-width: 100%;
+  min-height: 18px;
+}
+.result.preview { opacity: .55; }
+.result.error { color: var(--danger-text); font-size: 20px; font-weight: 500; letter-spacing: 0; }
+.keys {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+  margin-top: 14px;
+}
+.keys button {
+  height: 62px;
+  border: 0;
+  border-radius: 16px;
+  background: var(--key);
+  color: var(--key-text);
+  font: inherit;
+  font-size: 23px;
+  font-weight: 500;
+  cursor: pointer;
+  box-shadow: var(--key-shadow);
+  transition: transform .06s, background .12s;
+}
+.keys button:active { transform: translateY(2px); box-shadow: none; background: var(--key-press); }
+.keys button.op { background: var(--op); color: var(--op-text); font-size: 26px; }
+.keys button.eq { background: var(--accent); color: var(--accent-text); font-weight: 700; }
+.keys button.fn { color: var(--op-text); font-size: 20px; }
+button:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+.history { margin-top: 14px; }
+.history summary {
+  cursor: pointer;
+  color: var(--hist-text);
+  font-size: 14px;
+  padding: 6px 4px;
+  list-style: none;
+}
+.history summary::-webkit-details-marker { display: none; }
+.history summary::before { content: "▸ "; }
+.history[open] summary::before { content: "▾ "; }
+.history ul { list-style: none; margin: 4px 0 0; padding: 0; max-height: 150px; overflow-y: auto; }
+.history li button {
+  width: 100%;
+  background: none;
+  border: 0;
+  border-top: 1px solid var(--hist-line);
+  padding: 9px 4px;
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  font: inherit;
+  font-size: 15px;
+  color: var(--key-text);
+  cursor: pointer;
+  text-align: left;
+}
+.history li span:first-child { color: var(--hist-text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.history li span:last-child { font-weight: 600; font-variant-numeric: tabular-nums; }
+.empty { color: var(--hist-text); font-size: 14px; padding: 8px 4px; }
+.clear-hist {
+  background: none; border: 0; color: var(--op-text);
+  font: inherit; font-size: 14px; padding: 8px 4px; cursor: pointer;
+}
+.toast {
+  position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%) translateY(20px);
+  background: var(--screen); color: var(--screen-text);
+  padding: 8px 14px; border-radius: 999px; font-size: 14px;
+  opacity: 0; pointer-events: none; transition: opacity .2s, transform .2s;
+}
+.toast.show { opacity: 1; transform: translateX(-50%); }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+@media (max-height: 640px) { .keys button { height: 52px; } }
+</style>
+</head>
+<body>
+
+<main class="calc">
+  <div class="screen" id="screen" title="Tap to copy the result">
+    <div class="expr" id="expr" aria-label="Expression"></div>
+    <div class="result" id="result" role="status" aria-live="polite">0</div>
+    <div class="words" id="words"></div>
+  </div>
+
+  <div class="keys" id="keys">
+    <button class="fn" data-k="clear" aria-label="All clear">AC</button>
+    <button class="fn" data-k="paren" aria-label="Parenthesis">( )</button>
+    <button class="fn" data-k="%" aria-label="Percent">%</button>
+    <button class="op" data-k="÷" aria-label="Divide">÷</button>
+
+    <button data-k="7">7</button>
+    <button data-k="8">8</button>
+    <button data-k="9">9</button>
+    <button class="op" data-k="×" aria-label="Multiply">×</button>
+
+    <button data-k="4">4</button>
+    <button data-k="5">5</button>
+    <button data-k="6">6</button>
+    <button class="op" data-k="−" aria-label="Subtract">−</button>
+
+    <button data-k="1">1</button>
+    <button data-k="2">2</button>
+    <button data-k="3">3</button>
+    <button class="op" data-k="+" aria-label="Add">+</button>
+
+    <button data-k="0">0</button>
+    <button data-k=".">.</button>
+    <button class="fn" data-k="back" aria-label="Delete last">⌫</button>
+    <button class="eq" data-k="=" aria-label="Equals">=</button>
+  </div>
+
+  <details class="history" id="history">
+    <summary>History</summary>
+    <ul id="histList"></ul>
+  </details>
+</main>
+
+<div class="toast" id="toast">Result copied</div>
+
+<script>
+(() => {
+  const exprEl = document.getElementById("expr");
+  const resEl = document.getElementById("result");
+  const wordsEl = document.getElementById("words");
+  const histList = document.getElementById("histList");
+  const toast = document.getElementById("toast");
+
+  const OPS = "+−×÷";
+  let expr = "";
+  let done = false;       // true right after "="
+  let lastResult = "0";
+  let history = [];
+
+  /* ---------- Safe evaluator: exact big-number decimals (BigInt) ---------- */
+  const P = 40;                       // internal decimal places for division
+  const SHOW = 20;                    // decimal places shown in results
+  const pow10 = k => 10n ** BigInt(k);
+  const toDec = str => {
+    const [i, f = ""] = str.split(".");
+    return { n: BigInt((i + f) || "0"), s: f.length };
+  };
+  const norm = ({ n, s }) => {
+    while (s > 0 && n % 10n === 0n) { n /= 10n; s--; }
+    return { n, s };
+  };
+  const align = (a, b) => {
+    const s = Math.max(a.s, b.s);
+    return [a.n * pow10(s - a.s), b.n * pow10(s - b.s), s];
+  };
+  const dAdd = (a, b) => { const [x, y, s] = align(a, b); return norm({ n: x + y, s }); };
+  const dSub = (a, b) => { const [x, y, s] = align(a, b); return norm({ n: x - y, s }); };
+  const dMul = (a, b) => norm({ n: a.n * b.n, s: a.s + b.s });
+  const dDiv = (a, b) => {
+    if (b.n === 0n) throw new Error("div0");
+    return norm({ n: (a.n * pow10(b.s + P)) / (b.n * pow10(a.s)), s: P });
+  };
+  function toStr(d) {
+    let { n, s } = d;
+    if (s > SHOW) {
+      const k = pow10(s - SHOW), half = k / 2n;
+      n = (n < 0n ? n - half : n + half) / k;
+      ({ n, s } = norm({ n, s: SHOW }));
+    }
+    const neg = n < 0n;
+    let digits = (neg ? -n : n).toString();
+    if (s > 0) {
+      digits = digits.padStart(s + 1, "0");
+      digits = digits.slice(0, -s) + "." + digits.slice(-s);
+    }
+    return (neg ? "-" : "") + digits;
+  }
+
+  function evaluate(src) {
+    // auto-close open parentheses
+    const open = (src.match(/\(/g) || []).length - (src.match(/\)/g) || []).length;
+    const s = src + ")".repeat(Math.max(0, open));
+    let i = 0;
+    const peek = () => s[i];
+
+    function number() {
+      const m = /^\d*\.?\d+|^\d+\./.exec(s.slice(i, i + 520));
+      if (!m) throw new Error("incomplete");
+      i += m[0].length;
+      return toDec(m[0].replace(/\.$/, ""));
+    }
+    function primary() {
+      if (peek() === "(") {
+        i++;
+        const v = sum();
+        if (peek() !== ")") throw new Error("incomplete");
+        i++;
+        return v;
+      }
+      return number();
+    }
+    function postfix() {
+      let v = primary();
+      while (peek() === "%") { i++; v = norm({ n: v.n, s: v.s + 2 }); }
+      return v;
+    }
+    function unary() {
+      if (peek() === "−") { i++; const v = unary(); return { n: -v.n, s: v.s }; }
+      return postfix();
+    }
+    function product() {
+      let v = unary();
+      while (peek() === "×" || peek() === "÷") {
+        const op = s[i++];
+        const r = unary();
+        v = op === "×" ? dMul(v, r) : dDiv(v, r);
+      }
+      return v;
+    }
+    function sum() {
+      let v = product();
+      while (peek() === "+" || peek() === "−") {
+        const op = s[i++];
+        const r = product();
+        v = op === "+" ? dAdd(v, r) : dSub(v, r);
+      }
+      return v;
+    }
+    const v = sum();
+    if (i < s.length) throw new Error("incomplete");
+    return toStr(v);
+  }
+
+  /* ---------- Display ---------- */
+  // Indian grouping: 12,34,56,789  (last 3 digits, then pairs)
+  function group(int) {
+    if (int.length <= 3) return int;
+    const rest = int.slice(0, -3), parts = [];
+    for (let i = rest.length; i > 0; i -= 2) parts.push(rest.slice(Math.max(0, i - 2), i));
+    return parts.reverse().join(",") + "," + int.slice(-3);
+  }
+
+  function fmt(str) {
+    const neg = str.startsWith("-");
+    const [int, dec] = str.replace("-", "").split(".");
+    return (neg ? "−" : "") + group(int) + (dec ? "." + dec : "");
+  }
+
+  // Number in words, Indian system (up to 19 digits)
+  const ONES = ["", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten",
+    "eleven", "twelve", "thirteen", "fourteen", "fifteen", "sixteen", "seventeen", "eighteen", "nineteen"];
+  const TENS = ["", "", "twenty", "thirty", "forty", "fifty", "sixty", "seventy", "eighty", "ninety"];
+  const UNITS = [["shankh", 10n ** 17n], ["padma", 10n ** 15n], ["neel", 10n ** 13n],
+    ["kharab", 10n ** 11n], ["arab", 10n ** 9n], ["crore", 10n ** 7n],
+    ["lakh", 10n ** 5n], ["thousand", 1000n]];
+  const two = n => n < 20 ? ONES[n] : TENS[Math.floor(n / 10)] + (n % 10 ? " " + ONES[n % 10] : "");
+  const three = n => (n >= 100 ? ONES[Math.floor(n / 100)] + " hundred" + (n % 100 ? " " : "") : "") +
+    (n % 100 ? two(n % 100) : "");
+  function words(str) {
+    if (!/^-?\d+$/.test(str)) return "";
+    const neg = str[0] === "-";
+    const d = str.replace("-", "").replace(/^0+(?=\d)/, "");
+    if (d === "0") return "zero";
+    if (d.length > 19) return "";
+    let n = BigInt(d);
+    const parts = [];
+    for (const [name, v] of UNITS) {
+      const q = n / v;
+      if (q > 0n) { parts.push(two(Number(q)) + " " + name); n %= v; }
+    }
+    if (n > 0n) parts.push(three(Number(n)));
+    return (neg ? "minus " : "") + parts.join(" ");
+  }
+
+  function fit() {
+    const len = resEl.textContent.length;
+    resEl.style.fontSize = resEl.classList.contains("error") ? "" :
+      len > 24 ? "22px" : len > 16 ? "26px" : len > 12 ? "32px" : len > 9 ? "38px" : "";
+    resEl.scrollLeft = 0;
+  }
+
+  const hasValue = v => v !== "" && (expr.length > 0);
+
+  function render(final) {
+    exprEl.textContent = (expr.length > 3000 ? "…" + expr.slice(-3000) : expr) + (final ? " =" : "");
+    exprEl.scrollLeft = exprEl.scrollWidth;
+    resEl.classList.remove("error");
+    let shown = "";
+    if (final) {
+      resEl.classList.remove("preview");
+      resEl.textContent = fmt(lastResult);
+      shown = lastResult;
+    } else if (!expr) {
+      resEl.classList.remove("preview");
+      resEl.textContent = "0";
+    } else if (expr.length > 200000) {
+      resEl.classList.add("preview");   // very long: calculate only on "="
+      resEl.textContent = "…";
+    } else {
+      try {
+        const v = evaluate(expr);
+        const hasOp = /[+−×÷%()]/.test(expr.replace(/^−/, ""));
+        resEl.classList.toggle("preview", hasOp);
+        resEl.textContent = fmt(v);
+        lastResult = v;
+        shown = v;
+      } catch {
+        // mid-typing: show what the person has typed so far
+        resEl.classList.add("preview");
+        const tail = /[\d.]+$/.exec(expr);
+        resEl.textContent = tail ? fmt(tail[0].replace(/\.$/, "")) : resEl.textContent;
+      }
+    }
+    wordsEl.textContent = hasValue(shown) ? words(shown) : "";
+    fit();
+  }
+
+  function showError(msg) {
+    resEl.textContent = msg;
+    resEl.classList.add("error");
+    resEl.classList.remove("preview");
+    resEl.style.fontSize = "";
+    wordsEl.textContent = "";
+  }
+
+  /* ---------- Input ---------- */
+  const last = () => expr[expr.length - 1] || "";
+  const isDigit = c => /[0-9]/.test(c);
+
+  function input(k) {
+    if (/^[0-9]$/.test(k)) return digit(k);
+    if (k === ".") return dot();
+    if (OPS.includes(k)) return operator(k);
+    if (k === "%") return percent();
+    if (k === "paren") return paren();
+    if (k === "back") return back();
+    if (k === "clear") return clear();
+    if (k === "=") return equals();
+  }
+
+  const MAX_NUMBERS = 1000000;
+  const MAX_DIGITS = 500;
+  const MAX_CHARS = 5000000;
+  function canStartNumber() {
+    const count = (expr.match(/[\d.]+/g) || []).length;
+    if (count >= MAX_NUMBERS) { say("Limit reached: 1,000,000 numbers"); return false; }
+    return true;
+  }
+
+  function startFresh() { if (done) { expr = ""; done = false; } }
+
+  function digit(d) {
+    startFresh();
+    const tail = /[\d.]+$/.exec(expr);
+    if (tail && tail[0] === "0" && d !== ".") expr = expr.slice(0, -1); // no "007"
+    const cur = /[\d.]+$/.exec(expr);
+    if (expr.length >= MAX_CHARS) return say("Expression is too long");
+    if (cur && cur[0].replace(".", "").length >= MAX_DIGITS) return say("Max 500 digits per number");
+    if (!cur && !canStartNumber()) return;
+    if (last() === ")" || last() === "%") expr += "×";
+    expr += d;
+    render();
+  }
+
+  function dot() {
+    startFresh();
+    const tail = /[\d.]+$/.exec(expr);
+    if (tail && tail[0].includes(".")) return;
+    if (!tail && !canStartNumber()) return;
+    if (!tail) expr += (last() === ")" || last() === "%") ? "×0." : "0.";
+    else expr += ".";
+    render();
+  }
+
+  function operator(op) {
+    if (done) { expr = lastResult.replace("-", "−"); done = false; }
+    if (!expr) { if (op === "−") { expr = "−"; render(); } return; }
+    if (last() === "(") { if (op === "−") { expr += op; render(); } return; }
+    if (last() === "." ) expr = expr.slice(0, -1);
+    if (OPS.includes(last())) {
+      // allow "5×−2", otherwise replace the previous operator
+      if (op === "−" && "×÷".includes(last())) expr += op;
+      else {
+        expr = expr.slice(0, -1);
+        if (OPS.includes(last()) && expr.length > 1) expr = expr.slice(0, -1);
+        if (!expr) return;
+        expr += op;
+      }
+    } else expr += op;
+    render();
+  }
+
+  function percent() {
+    if (done) { expr = lastResult.replace("-", "−"); done = false; }
+    if (isDigit(last()) || last() === ")" || last() === "%") { expr += "%"; render(); }
+  }
+
+  function paren() {
+    startFresh();
+    const open = (expr.match(/\(/g) || []).length - (expr.match(/\)/g) || []).length;
+    const canClose = open > 0 && (isDigit(last()) || last() === ")" || last() === "%");
+    if (canClose) expr += ")";
+    else {
+      if (isDigit(last()) || last() === ")" || last() === "%") expr += "×";
+      expr += "(";
+    }
+    render();
+  }
+
+  function back() {
+    if (done) { clear(); return; }
+    expr = expr.slice(0, -1);
+    render();
+  }
+
+  function clear() { expr = ""; done = false; lastResult = "0"; render(); }
+
+  function equals() {
+    if (!expr || done) return;
+    try {
+      const v = evaluate(expr);
+      lastResult = v;
+      const label = expr.length > 120 ? expr.slice(0, 70) + "…" + expr.slice(-40) : expr;
+      history.unshift({ expr: label, value: v });
+      history = history.slice(0, 20);
+      renderHistory();
+      render(true);
+      done = true;
+    } catch (e) {
+      showError(e.message === "div0" ? "Can't divide by zero"
+              : "Finish the expression first");
+    }
+  }
+
+  /* ---------- History ---------- */
+  function renderHistory() {
+    histList.innerHTML = "";
+    if (!history.length) {
+      const li = document.createElement("li");
+      li.className = "empty";
+      li.textContent = "Calculations you finish will appear here.";
+      histList.appendChild(li);
+      return;
+    }
+    history.forEach(h => {
+      const li = document.createElement("li");
+      const b = document.createElement("button");
+      const a = document.createElement("span");
+      const r = document.createElement("span");
+      a.textContent = h.expr;
+      r.textContent = "= " + fmt(h.value);
+      b.append(a, r);
+      b.title = "Use this result";
+      b.addEventListener("click", () => {
+        expr = String(h.value).replace("-", "−");
+        done = false;
+        render();
+      });
+      li.appendChild(b);
+      histList.appendChild(li);
+    });
+    const li = document.createElement("li");
+    const c = document.createElement("button");
+    c.className = "clear-hist";
+    c.style.cssText = "border-top:1px solid var(--hist-line);width:auto;display:block";
+    c.textContent = "Clear history";
+    c.addEventListener("click", () => { history = []; renderHistory(); });
+    li.appendChild(c);
+    histList.appendChild(li);
+  }
+
+  function say(msg) {
+    toast.textContent = msg;
+    toast.classList.add("show");
+    clearTimeout(say.t);
+    say.t = setTimeout(() => toast.classList.remove("show"), 1400);
+  }
+
+  /* ---------- Copy result ---------- */
+  document.getElementById("screen").addEventListener("click", async () => {
+    if (resEl.classList.contains("error")) return;
+    const text = resEl.textContent.replace(/,/g, "").replace("−", "-");
+    try {
+      await navigator.clipboard.writeText(text);
+      say("Result copied");
+    } catch { /* clipboard unavailable: ignore */ }
+  });
+
+  /* ---------- Events ---------- */
+  document.getElementById("keys").addEventListener("click", e => {
+    const b = e.target.closest("button");
+    if (b) input(b.dataset.k);
+  });
+
+  document.addEventListener("keydown", e => {
+    if (e.ctrlKey || e.metaKey || e.altKey) return;
+    const k = e.key;
+    const map = { "*": "×", "x": "×", "X": "×", "/": "÷", "-": "−", ",": "." };
+    if (/^[0-9.+%]$/.test(k) || k === ",") input(map[k] || k);
+    else if (map[k]) input(map[k]);
+    else if (k === "(" || k === ")") input("paren");
+    else if (k === "Enter" || k === "=") { e.preventDefault(); input("="); }
+    else if (k === "Backspace") input("back");
+    else if (k === "Escape") input("clear");
+    else return;
+    if (k === "/") e.preventDefault();
+  });
+
+  /* ---------- Paste a long expression ---------- */
+  document.addEventListener("paste", e => {
+    const raw = (e.clipboardData || window.clipboardData).getData("text");
+    const text = raw.replace(/[xX*]/g, "×").replace(/\//g, "÷").replace(/[-–]/g, "−")
+                    .replace(/[\s,]/g, "").replace(/[^0-9.+−×÷()%]/g, "");
+    if (!text) return;
+    e.preventDefault();
+    const nums = text.match(/[\d.]+/g) || [];
+    if (text.length + (done ? 0 : expr.length) > MAX_CHARS ||
+        nums.length > MAX_NUMBERS ||
+        nums.some(n => n.replace(".", "").length > MAX_DIGITS)) {
+      return say("Too long to paste");
+    }
+    if (done) { expr = ""; done = false; }
+    expr += text;
+    render();
+  });
+
+  renderHistory();
+  render();
+
+  if ("serviceWorker" in navigator) {
+    window.addEventListener("load", () => {
+      navigator.serviceWorker.register("sw.js").catch(() => {});
+    });
+  }
+})();
+</script>
+</body>
+</html>
