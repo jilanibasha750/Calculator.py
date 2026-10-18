@@ -1,0 +1,736 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Indian Big Calculator</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#101a33">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<style>
+:root {
+  --page: #e9eef8;
+  --card: #ffffff;
+  --ink: #0d1b3d;
+  --muted: #5d6b8a;
+  --screen: #0d1b3d;
+  --screen-text: #ffffff;
+  --screen-dim: #9fb0d6;
+  --key: #eff3fb;
+  --key-press: #d9e2f5;
+  --fn: #dde6f7;
+  --fn-text: #0d1b3d;
+  --saffron: #ff9933;
+  --saffron-text: #3b1e00;
+  --green: #138808;
+  --green-text: #ffffff;
+  --danger: #ff8d7f;
+  --line: rgba(13, 27, 61, .12);
+  --shadow: 0 30px 60px -30px rgba(13, 27, 61, .45);
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --page: #060a16;
+    --card: #101a33;
+    --ink: #eef2fc;
+    --muted: #93a3c7;
+    --screen: #050813;
+    --screen-text: #ffffff;
+    --screen-dim: #7f90b8;
+    --key: #1b2848;
+    --key-press: #273762;
+    --fn: #26355d;
+    --fn-text: #dfe8ff;
+    --line: rgba(238, 242, 252, .12);
+    --shadow: 0 30px 60px -30px rgba(0, 0, 0, .8);
+  }
+}
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+html, body { height: 100%; }
+body {
+  margin: 0;
+  background: var(--page);
+  color: var(--ink);
+  font-family: ui-rounded, "SF Pro Rounded", "Segoe UI", system-ui, sans-serif;
+  display: flex;
+  justify-content: center;
+}
+/* Whole screen = two halves: top shows numbers and words, bottom has the keys */
+.calc {
+  position: relative;
+  width: 100%;
+  max-width: 440px;
+  height: 100vh;
+  height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  background: var(--card);
+  overflow: hidden;
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+@media (min-width: 480px) {
+  body { align-items: center; padding: 16px; }
+  .calc { height: min(calc(100dvh - 32px), 880px); border-radius: 30px; box-shadow: var(--shadow); }
+}
+.calc::before {
+  content: "";
+  flex: none;
+  height: 8px;
+  background: linear-gradient(to bottom, #ff9933 0 33.3%, #ffffff 33.3% 66.6%, #138808 66.6% 100%);
+  box-shadow: inset 0 0 0 1px rgba(13, 27, 61, .08);
+}
+.half {
+  flex: 1 1 50%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  padding: 0 14px;
+}
+.top { flex: none; padding: 10px 4px 8px; }
+.top h1 { margin: 0; font-size: 18px; font-weight: 800; letter-spacing: -0.01em; }
+.top p { margin: 1px 0 0; font-size: 12px; color: var(--muted); }
+.screen {
+  flex: 1 1 auto;
+  min-height: 0;
+  background: var(--screen);
+  color: var(--screen-text);
+  border-radius: 20px;
+  padding: 12px 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+  overflow-y: auto;             /* long numbers and words scroll inside this half */
+  cursor: pointer;
+  border-bottom: 4px solid var(--saffron);
+  scrollbar-width: thin;
+}
+.expr {
+  margin-top: auto;             /* keeps everything at the bottom until it overflows */
+  color: var(--screen-dim);
+  font-size: 18px;
+  line-height: 1.3;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  direction: ltr;
+  text-align: right;
+}
+.result {
+  font-size: 52px;
+  font-weight: 700;
+  line-height: 1.15;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  text-align: right;
+  transition: opacity .15s;
+}
+.result.preview { opacity: .6; }
+.result.error { color: var(--danger); font-size: 20px; font-weight: 500; letter-spacing: 0; }
+.words {
+  color: var(--saffron);
+  font-size: 16px;
+  line-height: 1.35;
+  text-align: right;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}
+.words.intl { color: var(--screen-dim); font-size: 14px; }
+.keys {
+  flex: 1 1 50%;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  grid-template-rows: repeat(5, 1fr);
+  gap: 10px;
+  padding: 12px 14px 14px;
+}
+.keys button {
+  min-height: 0;
+  height: 100%;
+  border: 0;
+  border-radius: 18px;
+  background: var(--key);
+  color: var(--ink);
+  font: inherit;
+  font-size: 26px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform .06s, background .12s;
+}
+.keys button:active { transform: scale(.95); background: var(--key-press); }
+.keys button.fn { background: var(--fn); color: var(--fn-text); font-size: 21px; }
+.keys button.op { background: var(--saffron); color: var(--saffron-text); font-size: 30px; }
+.keys button.eq { background: var(--green); color: var(--green-text); font-size: 30px; }
+.keys button.op:active { background: #e8851f; }
+.keys button.eq:active { background: #0e6a06; }
+button:focus-visible { outline: 3px solid var(--saffron); outline-offset: 2px; }
+.history { flex: none; margin-top: 4px; }
+.history summary {
+  cursor: pointer;
+  color: var(--muted);
+  font-size: 14px;
+  font-weight: 600;
+  padding: 6px 4px 8px;
+  list-style: none;
+}
+.history summary::-webkit-details-marker { display: none; }
+.history summary::before { content: "▸ "; }
+.history[open] summary::before { content: "▾ "; }
+.history ul { list-style: none; margin: 4px 0 0; padding: 0; max-height: 110px; overflow-y: auto; }
+.history li button {
+  width: 100%;
+  background: none;
+  border: 0;
+  border-top: 1px solid var(--line);
+  padding: 9px 4px;
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  font: inherit;
+  font-size: 15px;
+  color: var(--ink);
+  cursor: pointer;
+  text-align: left;
+}
+.history li span:first-child { color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.history li span:last-child { font-weight: 700; font-variant-numeric: tabular-nums; }
+.empty { color: var(--muted); font-size: 14px; padding: 8px 4px; }
+.clear-hist {
+  background: none; border: 0; color: var(--green);
+  font: inherit; font-size: 14px; font-weight: 600; padding: 8px 4px; cursor: pointer;
+}
+.toast {
+  position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%) translateY(20px);
+  background: var(--screen); color: var(--screen-text);
+  padding: 8px 14px; border-radius: 999px; font-size: 14px;
+  opacity: 0; pointer-events: none; transition: opacity .2s, transform .2s;
+}
+.toast.show { opacity: 1; transform: translateX(-50%); }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+</head>
+<body>
+
+<main class="calc">
+  <section class="half">
+  <header class="top">
+    <h1>Indian Big Calculator</h1>
+    <p>Big numbers in lakh and crore</p>
+  </header>
+  <div class="screen" id="screen" title="Tap to copy the result">
+    <div class="expr" id="expr" aria-label="Expression"></div>
+    <div class="result" id="result" role="status" aria-live="polite">0</div>
+    <div class="words" id="words"></div>
+    <div class="words intl" id="intl"></div>
+  </div>
+
+  <details class="history" id="history">
+    <summary>History</summary>
+    <ul id="histList"></ul>
+  </details>
+  </section>
+
+  <div class="keys" id="keys">
+    <button class="fn" data-k="clear" aria-label="All clear">AC</button>
+    <button class="fn" data-k="paren" aria-label="Parenthesis">( )</button>
+    <button class="fn" data-k="%" aria-label="Percent">%</button>
+    <button class="op" data-k="÷" aria-label="Divide">÷</button>
+
+    <button data-k="7">7</button>
+    <button data-k="8">8</button>
+    <button data-k="9">9</button>
+    <button class="op" data-k="×" aria-label="Multiply">×</button>
+
+    <button data-k="4">4</button>
+    <button data-k="5">5</button>
+    <button data-k="6">6</button>
+    <button class="op" data-k="−" aria-label="Subtract">−</button>
+
+    <button data-k="1">1</button>
+    <button data-k="2">2</button>
+    <button data-k="3">3</button>
+    <button class="op" data-k="+" aria-label="Add">+</button>
+
+    <button data-k="0">0</button>
+    <button data-k=".">.</button>
+    <button class="fn" data-k="back" aria-label="Delete last">⌫</button>
+    <button class="eq" data-k="=" aria-label="Equals">=</button>
+  </div>
+
+</main>
+
+<div class="toast" id="toast">Result copied</div>
+
+<script>
+(() => {
+  const screenEl = document.getElementById("screen");
+  const exprEl = document.getElementById("expr");
+  const resEl = document.getElementById("result");
+  const wordsEl = document.getElementById("words");
+  const intlEl = document.getElementById("intl");
+  const histList = document.getElementById("histList");
+  const toast = document.getElementById("toast");
+
+  const OPS = "+−×÷";
+  let expr = "";
+  let done = false;       // true right after "="
+  let lastResult = "0";
+  let history = [];
+
+  /* ---------- Safe evaluator: exact big-number decimals (BigInt) ---------- */
+  const P = 40;                       // internal decimal places for division
+  const SHOW = 20;                    // decimal places shown in results
+  const pow10 = k => 10n ** BigInt(k);
+  const toDec = str => {
+    const [i, f = ""] = str.split(".");
+    return { n: BigInt((i + f) || "0"), s: f.length };
+  };
+  const norm = ({ n, s }) => {
+    while (s > 0 && n % 10n === 0n) { n /= 10n; s--; }
+    return { n, s };
+  };
+  const align = (a, b) => {
+    const s = Math.max(a.s, b.s);
+    return [a.n * pow10(s - a.s), b.n * pow10(s - b.s), s];
+  };
+  const dAdd = (a, b) => { const [x, y, s] = align(a, b); return norm({ n: x + y, s }); };
+  const dSub = (a, b) => { const [x, y, s] = align(a, b); return norm({ n: x - y, s }); };
+  const dMul = (a, b) => norm({ n: a.n * b.n, s: a.s + b.s });
+  const dDiv = (a, b) => {
+    if (b.n === 0n) throw new Error("div0");
+    return norm({ n: (a.n * pow10(b.s + P)) / (b.n * pow10(a.s)), s: P });
+  };
+  function toStr(d) {
+    let { n, s } = d;
+    if (s > SHOW) {
+      const k = pow10(s - SHOW), half = k / 2n;
+      n = (n < 0n ? n - half : n + half) / k;
+      ({ n, s } = norm({ n, s: SHOW }));
+    }
+    const neg = n < 0n;
+    let digits = (neg ? -n : n).toString();
+    if (s > 0) {
+      digits = digits.padStart(s + 1, "0");
+      digits = digits.slice(0, -s) + "." + digits.slice(-s);
+    }
+    return (neg ? "-" : "") + digits;
+  }
+
+  function evaluate(src) {
+    // auto-close open parentheses
+    const open = (src.match(/\(/g) || []).length - (src.match(/\)/g) || []).length;
+    const s = src + ")".repeat(Math.max(0, open));
+    let i = 0;
+    const peek = () => s[i];
+
+    function number() {
+      const m = /^\d*\.?\d+|^\d+\./.exec(s.slice(i, i + 520));
+      if (!m) throw new Error("incomplete");
+      i += m[0].length;
+      return toDec(m[0].replace(/\.$/, ""));
+    }
+    function primary() {
+      if (peek() === "(") {
+        i++;
+        const v = sum();
+        if (peek() !== ")") throw new Error("incomplete");
+        i++;
+        return v;
+      }
+      return number();
+    }
+    function postfix() {
+      let v = primary();
+      while (peek() === "%") { i++; v = norm({ n: v.n, s: v.s + 2 }); }
+      return v;
+    }
+    function unary() {
+      if (peek() === "−") { i++; const v = unary(); return { n: -v.n, s: v.s }; }
+      return postfix();
+    }
+    function product() {
+      let v = unary();
+      while (peek() === "×" || peek() === "÷") {
+        const op = s[i++];
+        const r = unary();
+        v = op === "×" ? dMul(v, r) : dDiv(v, r);
+      }
+      return v;
+    }
+    function sum() {
+      let v = product();
+      while (peek() === "+" || peek() === "−") {
+        const op = s[i++];
+        const r = product();
+        v = op === "+" ? dAdd(v, r) : dSub(v, r);
+      }
+      return v;
+    }
+    const v = sum();
+    if (i < s.length) throw new Error("incomplete");
+    return toStr(v);
+  }
+
+  /* ---------- Display ---------- */
+  // Indian grouping: 12,34,56,789  (last 3 digits, then pairs)
+  function group(int) {
+    if (int.length <= 3) return int;
+    const rest = int.slice(0, -3), parts = [];
+    for (let i = rest.length; i > 0; i -= 2) parts.push(rest.slice(Math.max(0, i - 2), i));
+    return parts.reverse().join(",") + "," + int.slice(-3);
+  }
+
+  function fmt(str) {
+    const neg = str.startsWith("-");
+    const [int, dec] = str.replace("-", "").split(".");
+    return (neg ? "−" : "") + group(int) + (dec ? "." + dec : "");
+  }
+
+  const MAX_WORD_DIGITS = 600;      // words are shown for numbers up to 600 digits
+
+  // Number in words: thousand, lakh, crore, billion, trillion
+  // (the number in front of "trillion" is read the Indian way, e.g. "one lakh trillion")
+  const ONES = ["", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten",
+    "eleven", "twelve", "thirteen", "fourteen", "fifteen", "sixteen", "seventeen", "eighteen", "nineteen"];
+  const TENS = ["", "", "twenty", "thirty", "forty", "fifty", "sixty", "seventy", "eighty", "ninety"];
+  const two = n => n < 20 ? ONES[n] : TENS[Math.floor(n / 10)] + (n % 10 ? " " + ONES[n % 10] : "");
+  const three = n => (n >= 100 ? ONES[Math.floor(n / 100)] + " hundred" + (n % 100 ? " " : "") : "") +
+    (n % 100 ? two(n % 100) : "");
+
+  // Indian reading: hundred, thousand, lakh, crore ("one thousand crore" for 10,000,000,000)
+  function indian(n) {              // n > 0n
+    const parts = [];
+    const cr = n / 10000000n;
+    if (cr > 0n) { parts.push((cr >= 100n ? indian(cr) : two(Number(cr))) + " crore"); n %= 10000000n; }
+    const lakh = n / 100000n;
+    if (lakh > 0n) { parts.push(two(Number(lakh)) + " lakh"); n %= 100000n; }
+    const th = n / 1000n;
+    if (th > 0n) { parts.push(two(Number(th)) + " thousand"); n %= 1000n; }
+    if (n > 0n) parts.push(three(Number(n)));
+    return parts.join(" ");
+  }
+
+  function wordsBig(n) {            // n > 0n
+    const T = 10n ** 12n, B = 10n ** 9n;
+    const parts = [];
+    const t = n / T;
+    if (t > 0n) { parts.push(indian(t) + " trillion"); n %= T; }
+    const b = n / B;
+    if (b > 0n) { parts.push(three(Number(b)) + " billion"); n %= B; }
+    if (n > 0n) parts.push(indian(n));
+    return parts.join(" ");
+  }
+
+  function words(str) {
+    if (!/^-?\d+$/.test(str)) return "";
+    const neg = str[0] === "-";
+    const d = str.replace("-", "").replace(/^0+(?=\d)/, "");
+    if (d === "0") return "zero";
+    if (d.length > MAX_WORD_DIGITS) return "";
+    return (neg ? "minus " : "") + wordsBig(BigInt(d));
+  }
+
+  // International words: thousand, million, billion, trillion ... centillion and beyond
+  // Names above vigintillion are built with the standard Conway-Wechsler rules.
+  const HAND = ["", "thousand", "million", "billion", "trillion", "quadrillion", "quintillion",
+    "sextillion", "septillion", "octillion", "nonillion", "decillion", "undecillion", "duodecillion",
+    "tredecillion", "quattuordecillion", "quindecillion", "sexdecillion", "septendecillion",
+    "octodecillion", "novemdecillion", "vigintillion"];
+  const UN = [["", ""], ["un", ""], ["duo", ""], ["tre", "s"], ["quattuor", ""], ["quinqua", ""],
+    ["se", "sx"], ["septe", "mn"], ["octo", ""], ["nove", "mn"]];
+  const TN = [["", ""], ["deci", "n"], ["viginti", "ms"], ["triginta", "ns"], ["quadraginta", "ns"],
+    ["quinquaginta", "ns"], ["sexaginta", "n"], ["septuaginta", "n"], ["octoginta", "mx"], ["nonaginta", ""]];
+  const HN = [["", ""], ["centi", "nx"], ["ducenti", "n"], ["trecenti", "ns"], ["quadringenti", "ns"],
+    ["quingenti", "ns"], ["sescenti", "n"], ["septingenti", "n"], ["octingenti", "mx"], ["nongenti", ""]];
+  function scaleName(i) {           // i = group number: 1 thousand, 2 million, 3 billion ...
+    if (i < HAND.length) return HAND[i];
+    const k = i - 1;                // the "k-illion"
+    const u = k % 10, t = Math.floor(k / 10) % 10, h = Math.floor(k / 100);
+    const marks = t ? TN[t][1] : HN[h][1];
+    let up = UN[u][0];
+    for (const letter of UN[u][1]) if (marks.includes(letter)) { up += letter; break; }
+    return (up + TN[t][0] + HN[h][0]).replace(/[aeiou]$/, "") + "illion";
+  }
+  function intlWords(str) {
+    if (!/^-?\d+$/.test(str)) return "";
+    const neg = str[0] === "-";
+    const d = str.replace("-", "").replace(/^0+(?=\d)/, "");
+    if (d === "0") return "zero";
+    if (d.length > MAX_WORD_DIGITS) return "";
+    const parts = [];
+    for (let end = d.length, i = 0; end > 0; end -= 3, i++) {
+      const g = Number(d.slice(Math.max(0, end - 3), end));
+      if (g) parts.unshift(three(g) + (i ? " " + scaleName(i) : ""));
+    }
+    return (neg ? "minus " : "") + parts.join(" ");
+  }
+
+  function fit() {
+    const len = resEl.textContent.length;
+    resEl.style.fontSize = resEl.classList.contains("error") ? "" :
+      len > 120 ? "16px" : len > 60 ? "20px" : len > 36 ? "25px" :
+      len > 24 ? "31px" : len > 16 ? "37px" : len > 12 ? "43px" : len > 9 ? "48px" : "";
+    screenEl.scrollTop = screenEl.scrollHeight;   // keep the newest line and the answer in view
+  }
+
+  const hasValue = v => v !== "" && expr.length > 0;
+
+  function render(final) {
+    exprEl.textContent = (expr.length > 3000 ? "…" + expr.slice(-3000) : expr) + (final ? " =" : "");
+    resEl.classList.remove("error");
+    let shown = "";
+    if (final) {
+      resEl.classList.remove("preview");
+      resEl.textContent = fmt(lastResult);
+      shown = lastResult;
+    } else if (!expr) {
+      resEl.classList.remove("preview");
+      resEl.textContent = "0";
+    } else if (expr.length > 200000) {
+      resEl.classList.add("preview");   // very long: calculate only on "="
+      resEl.textContent = "…";
+    } else {
+      try {
+        const v = evaluate(expr);
+        const hasOp = /[+−×÷%()]/.test(expr.replace(/^−/, ""));
+        resEl.classList.toggle("preview", hasOp);
+        resEl.textContent = fmt(v);
+        lastResult = v;
+        shown = v;
+      } catch {
+        // mid-typing: show what the person has typed so far
+        resEl.classList.add("preview");
+        const tail = /[\d.]+$/.exec(expr);
+        resEl.textContent = tail ? fmt(tail[0].replace(/\.$/, "")) : resEl.textContent;
+      }
+    }
+    wordsEl.textContent = hasValue(shown) ? words(shown) : "";
+    intlEl.textContent = hasValue(shown) ? intlWords(shown) : "";
+    fit();
+  }
+
+  function showError(msg) {
+    resEl.textContent = msg;
+    resEl.classList.add("error");
+    resEl.classList.remove("preview");
+    resEl.style.fontSize = "";
+    wordsEl.textContent = "";
+    intlEl.textContent = "";
+  }
+
+  /* ---------- Input ---------- */
+  const last = () => expr[expr.length - 1] || "";
+  const isDigit = c => /[0-9]/.test(c);
+
+  function input(k) {
+    if (/^[0-9]$/.test(k)) return digit(k);
+    if (k === ".") return dot();
+    if (OPS.includes(k)) return operator(k);
+    if (k === "%") return percent();
+    if (k === "paren") return paren();
+    if (k === "back") return back();
+    if (k === "clear") return clear();
+    if (k === "=") return equals();
+  }
+
+  const MAX_NUMBERS = 1000000;
+  const MAX_DIGITS = 500;
+  const MAX_CHARS = 5000000;
+  function canStartNumber() {
+    const count = (expr.match(/[\d.]+/g) || []).length;
+    if (count >= MAX_NUMBERS) { say("Limit reached: 1,000,000 numbers"); return false; }
+    return true;
+  }
+
+  function startFresh() { if (done) { expr = ""; done = false; } }
+
+  function digit(d) {
+    startFresh();
+    const tail = /[\d.]+$/.exec(expr);
+    if (tail && tail[0] === "0" && d !== ".") expr = expr.slice(0, -1); // no "007"
+    const cur = /[\d.]+$/.exec(expr);
+    if (expr.length >= MAX_CHARS) return say("Expression is too long");
+    if (cur && cur[0].replace(".", "").length >= MAX_DIGITS) return say("Max 500 digits per number");
+    if (!cur && !canStartNumber()) return;
+    if (last() === ")" || last() === "%") expr += "×";
+    expr += d;
+    render();
+  }
+
+  function dot() {
+    startFresh();
+    const tail = /[\d.]+$/.exec(expr);
+    if (tail && tail[0].includes(".")) return;
+    if (!tail && !canStartNumber()) return;
+    if (!tail) expr += (last() === ")" || last() === "%") ? "×0." : "0.";
+    else expr += ".";
+    render();
+  }
+
+  function operator(op) {
+    if (done) { expr = lastResult.replace("-", "−"); done = false; }
+    if (!expr) { if (op === "−") { expr = "−"; render(); } return; }
+    if (last() === "(") { if (op === "−") { expr += op; render(); } return; }
+    if (last() === "." ) expr = expr.slice(0, -1);
+    if (OPS.includes(last())) {
+      // allow "5×−2", otherwise replace the previous operator
+      if (op === "−" && "×÷".includes(last())) expr += op;
+      else {
+        expr = expr.slice(0, -1);
+        if (OPS.includes(last()) && expr.length > 1) expr = expr.slice(0, -1);
+        if (!expr) return;
+        expr += op;
+      }
+    } else expr += op;
+    render();
+  }
+
+  function percent() {
+    if (done) { expr = lastResult.replace("-", "−"); done = false; }
+    if (isDigit(last()) || last() === ")" || last() === "%") { expr += "%"; render(); }
+  }
+
+  function paren() {
+    startFresh();
+    const open = (expr.match(/\(/g) || []).length - (expr.match(/\)/g) || []).length;
+    const canClose = open > 0 && (isDigit(last()) || last() === ")" || last() === "%");
+    if (canClose) expr += ")";
+    else {
+      if (isDigit(last()) || last() === ")" || last() === "%") expr += "×";
+      expr += "(";
+    }
+    render();
+  }
+
+  function back() {
+    if (done) { clear(); return; }
+    expr = expr.slice(0, -1);
+    render();
+  }
+
+  function clear() { expr = ""; done = false; lastResult = "0"; render(); }
+
+  function equals() {
+    if (!expr || done) return;
+    try {
+      const v = evaluate(expr);
+      lastResult = v;
+      const label = expr.length > 120 ? expr.slice(0, 70) + "…" + expr.slice(-40) : expr;
+      history.unshift({ expr: label, value: v });
+      history = history.slice(0, 20);
+      renderHistory();
+      render(true);
+      done = true;
+    } catch (e) {
+      showError(e.message === "div0" ? "Can't divide by zero"
+              : "Finish the expression first");
+    }
+  }
+
+  /* ---------- History ---------- */
+  function renderHistory() {
+    histList.innerHTML = "";
+    if (!history.length) {
+      const li = document.createElement("li");
+      li.className = "empty";
+      li.textContent = "Calculations you finish will appear here.";
+      histList.appendChild(li);
+      return;
+    }
+    history.forEach(h => {
+      const li = document.createElement("li");
+      const b = document.createElement("button");
+      const a = document.createElement("span");
+      const r = document.createElement("span");
+      a.textContent = h.expr;
+      r.textContent = "= " + fmt(h.value);
+      b.append(a, r);
+      b.title = "Use this result";
+      b.addEventListener("click", () => {
+        expr = String(h.value).replace("-", "−");
+        done = false;
+        render();
+      });
+      li.appendChild(b);
+      histList.appendChild(li);
+    });
+    const li = document.createElement("li");
+    const c = document.createElement("button");
+    c.className = "clear-hist";
+    c.style.cssText = "border-top:1px solid var(--line);width:auto;display:block";
+    c.textContent = "Clear history";
+    c.addEventListener("click", () => { history = []; renderHistory(); });
+    li.appendChild(c);
+    histList.appendChild(li);
+  }
+
+  function say(msg) {
+    toast.textContent = msg;
+    toast.classList.add("show");
+    clearTimeout(say.t);
+    say.t = setTimeout(() => toast.classList.remove("show"), 1400);
+  }
+
+  /* ---------- Copy result ---------- */
+  document.getElementById("screen").addEventListener("click", async () => {
+    if (resEl.classList.contains("error")) return;
+    const text = resEl.textContent.replace(/,/g, "").replace("−", "-");
+    try {
+      await navigator.clipboard.writeText(text);
+      say("Result copied");
+    } catch { /* clipboard unavailable: ignore */ }
+  });
+
+  /* ---------- Events ---------- */
+  document.getElementById("keys").addEventListener("click", e => {
+    const b = e.target.closest("button");
+    if (b) input(b.dataset.k);
+  });
+
+  document.addEventListener("keydown", e => {
+    if (e.ctrlKey || e.metaKey || e.altKey) return;
+    const k = e.key;
+    const map = { "*": "×", "x": "×", "X": "×", "/": "÷", "-": "−", ",": "." };
+    if (/^[0-9.+%]$/.test(k) || k === ",") input(map[k] || k);
+    else if (map[k]) input(map[k]);
+    else if (k === "(" || k === ")") input("paren");
+    else if (k === "Enter" || k === "=") { e.preventDefault(); input("="); }
+    else if (k === "Backspace") input("back");
+    else if (k === "Escape") input("clear");
+    else return;
+    if (k === "/") e.preventDefault();
+  });
+
+  /* ---------- Paste a long expression ---------- */
+  document.addEventListener("paste", e => {
+    const raw = (e.clipboardData || window.clipboardData).getData("text");
+    const text = raw.replace(/[xX*]/g, "×").replace(/\//g, "÷").replace(/[-–]/g, "−")
+                    .replace(/[\s,]/g, "").replace(/[^0-9.+−×÷()%]/g, "");
+    if (!text) return;
+    e.preventDefault();
+    const nums = text.match(/[\d.]+/g) || [];
+    if (text.length + (done ? 0 : expr.length) > MAX_CHARS ||
+        nums.length > MAX_NUMBERS ||
+        nums.some(n => n.replace(".", "").length > MAX_DIGITS)) {
+      return say("Too long to paste");
+    }
+    if (done) { expr = ""; done = false; }
+    expr += text;
+    render();
+  });
+
+  renderHistory();
+  render();
+
+  if ("serviceWorker" in navigator) {
+    window.addEventListener("load", () => {
+      navigator.serviceWorker.register("sw.js").catch(() => {});
+    });
+  }
+})();
+</script>
+</body>
+</html>
